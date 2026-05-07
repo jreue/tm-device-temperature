@@ -12,4 +12,4 @@
 #define LED_DATA_PIN 33
 #define NUM_PIXELS 48
 
-// #define DIAG_MODE
+// #define DETECTION_MODE

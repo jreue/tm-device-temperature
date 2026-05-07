@@ -5,8 +5,6 @@
 
 #include "hardware_config.h"
 
-// ── Temperature ───────────────────────────────────────────────────────────────
-
 OneWire oneWire(ONE_WIRE_PIN);
 DallasTemperature sensors(&oneWire);
 
@@ -23,8 +21,6 @@ Probe probes[] = {
 bool coolComplete = false;
 bool hotComplete = false;
 
-// ── LEDs ──────────────────────────────────────────────────────────────────────
-
 CRGB leds[NUM_PIXELS];
 
 static const int COOL_START = 0;
@@ -32,11 +28,8 @@ static const int COOL_END = (NUM_PIXELS / 2) - 1;
 static const int HOT_START = NUM_PIXELS / 2;
 static const int HOT_END = NUM_PIXELS - 1;
 
-// ── Forward declarations ──────────────────────────────────────────────────────
+void detectSensorAddresses();
 
-#ifdef DIAG_MODE
-void detectAddresses();
-#else
 void checkTemperatures();
 void handleCoolTargetReached();
 void handleHotTargetReached();
@@ -46,23 +39,22 @@ void playCompleteCoolEffect();
 void playCompleteHotEffect();
 void playFinalEffect();
 bool isCalibrated();
-#endif
-
-// ── Setup / Loop ──────────────────────────────────────────────────────────────
 
 void setup() {
   Serial.begin(115200);
+
   sensors.begin();
+
   FastLED.addLeds<WS2812B, LED_DATA_PIN, GRB>(leds, NUM_PIXELS);
   FastLED.setBrightness(180);
 
-#ifdef DIAG_MODE
-  detectAddresses();
+#ifdef DETECTION_MODE
+  detectSensorAddresses();
 #endif
 }
 
 void loop() {
-#ifdef DIAG_MODE
+#ifdef DETECTION_MODE
   return;
 #else
   static unsigned long lastLed = 0;
@@ -87,10 +79,7 @@ void loop() {
 #endif
 }
 
-// ── Functions ─────────────────────────────────────────────────────────────────
-
-#ifdef DIAG_MODE
-void detectAddresses() {
+void detectSensorAddresses() {
   Serial.println("Scanning for DS18B20 devices...");
   DeviceAddress addr;
   int found = 0;
@@ -112,8 +101,6 @@ void detectAddresses() {
   if (found == 0)
     Serial.println("No devices found.");
 }
-
-#else
 
 bool isCalibrated() {
   return coolComplete && hotComplete;
@@ -251,5 +238,3 @@ void playFinalEffect() {
     }
   }
 }
-
-#endif
