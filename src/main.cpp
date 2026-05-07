@@ -2,8 +2,13 @@
 #include <DallasTemperature.h>
 #include <FastLED.h>
 #include <OneWire.h>
+#include <shared_hardware_config.h>
 
+#include "EspNowHelper.h"
 #include "hardware_config.h"
+
+uint8_t hubAddress[] = HUB_MAC_ADDRESS;
+EspNowHelper espNowHelper;
 
 OneWire oneWire(ONE_WIRE_PIN);
 DallasTemperature sensors(&oneWire);
@@ -39,9 +44,14 @@ void playCompleteCoolEffect();
 void playCompleteHotEffect();
 void playFinalEffect();
 bool isCalibrated();
+void notifyHub();
 
 void setup() {
   Serial.begin(115200);
+
+  espNowHelper.begin(DEVICE_ID);
+  espNowHelper.addPeer(hubAddress);
+  espNowHelper.sendModuleConnected(hubAddress);
 
   sensors.begin();
   // Don't block for ~750ms after requestTemperatures(); read results in a separate loop tick
@@ -70,6 +80,8 @@ void loop() {
     lastLed = now;
     if (isCalibrated()) {
       playFinalEffect();
+      notifyHub();
+
     } else {
       coolComplete ? playCompleteCoolEffect() : playIdleCoolEffect();
       hotComplete ? playCompleteHotEffect() : playIdleHotEffect();
@@ -117,6 +129,14 @@ void detectSensorAddresses() {
 
 bool isCalibrated() {
   return coolComplete && hotComplete;
+}
+
+void notifyHub() {
+  static bool notified = false;
+  if (!notified) {
+    espNowHelper.sendModuleUpdated(hubAddress, true);
+    notified = true;
+  }
 }
 
 void checkTemperatures() {
