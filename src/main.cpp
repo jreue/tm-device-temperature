@@ -33,6 +33,10 @@ static const int COOL_END = (NUM_PIXELS / 2) - 1;
 static const int HOT_START = NUM_PIXELS / 2;
 static const int HOT_END = NUM_PIXELS - 1;
 
+static const unsigned long TEMPERATURE_POLL_INTERVAL_MS = 2000;
+static const unsigned long CALIBRATION_GRACE_PERIOD_MS = 5000;
+static const unsigned long LED_FRAME_INTERVAL_MS = 33;
+
 void detectSensorAddresses();
 
 void checkTemperatures();
@@ -82,9 +86,9 @@ void loop() {
   }
 
   // Update LEDs at ~30 fps (every 33 ms)
-  if (now - lastLed >= 33) {
+  if (now - lastLed >= LED_FRAME_INTERVAL_MS) {
     lastLed = now;
-    if (calibratedAt > 0 && now - calibratedAt >= 5000) {
+    if (calibratedAt > 0 && now - calibratedAt >= CALIBRATION_GRACE_PERIOD_MS) {
       // 5 s grace period elapsed — play final effect
       playFinalEffect();
       notifyHub();
@@ -102,7 +106,7 @@ void loop() {
   // Check temperatures every ~750 ms, but only after a conversion request has been made and
   // at least 750 ms has passed since then (DS18B20 max conversion time is 750 ms)
   if (!isCalibrated()) {
-    if (!conversionPending && now - lastTemp >= 2000) {
+    if (!conversionPending && now - lastTemp >= TEMPERATURE_POLL_INTERVAL_MS) {
       lastTemp = now;
       sensors.requestTemperatures();
       conversionPending = true;
