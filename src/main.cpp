@@ -73,15 +73,25 @@ void loop() {
   static unsigned long lastLed = 0;
   static unsigned long lastTemp = 0;
   static bool conversionPending = false;
+  static unsigned long calibratedAt = 0;
   unsigned long now = millis();
+
+  // Record the moment both targets are first reached
+  if (isCalibrated() && calibratedAt == 0) {
+    calibratedAt = now;
+  }
 
   // Update LEDs at ~30 fps (every 33 ms)
   if (now - lastLed >= 33) {
     lastLed = now;
-    if (isCalibrated()) {
+    if (calibratedAt > 0 && now - calibratedAt >= 5000) {
+      // 5 s grace period elapsed — play final effect
       playFinalEffect();
       notifyHub();
-
+    } else if (calibratedAt > 0) {
+      // Both targets reached — hold both completed effects for 5 s so the player sees them
+      playCompleteCoolEffect();
+      playCompleteHotEffect();
     } else {
       coolComplete ? playCompleteCoolEffect() : playIdleCoolEffect();
       hotComplete ? playCompleteHotEffect() : playIdleHotEffect();
