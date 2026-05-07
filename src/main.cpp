@@ -44,6 +44,9 @@ void setup() {
   Serial.begin(115200);
 
   sensors.begin();
+  // Don't block for ~750ms after requestTemperatures(); read results in a separate loop tick
+  // instead
+  sensors.setWaitForConversion(false);
 
   FastLED.addLeds<WS2812B, LED_DATA_PIN, GRB>(leds, NUM_PIXELS);
   FastLED.setBrightness(180);
@@ -59,8 +62,10 @@ void loop() {
 #else
   static unsigned long lastLed = 0;
   static unsigned long lastTemp = 0;
+  static bool conversionPending = false;
   unsigned long now = millis();
 
+  // Update LEDs at ~30 fps (every 33 ms)
   if (now - lastLed >= 33) {
     lastLed = now;
     if (isCalibrated()) {
@@ -72,9 +77,17 @@ void loop() {
     FastLED.show();
   }
 
-  if (!isCalibrated() && now - lastTemp >= 2000) {
-    lastTemp = now;
-    checkTemperatures();
+  // Check temperatures every ~750 ms, but only after a conversion request has been made and
+  // at least 750 ms has passed since then (DS18B20 max conversion time is 750 ms)
+  if (!isCalibrated()) {
+    if (!conversionPending && now - lastTemp >= 2000) {
+      lastTemp = now;
+      sensors.requestTemperatures();
+      conversionPending = true;
+    } else if (conversionPending && now - lastTemp >= 750) {
+      conversionPending = false;
+      checkTemperatures();
+    }
   }
 #endif
 }
@@ -107,8 +120,6 @@ bool isCalibrated() {
 }
 
 void checkTemperatures() {
-  sensors.requestTemperatures();
-
   if (!coolComplete) {
     float t = sensors.getTempF(probes[0].address);
     Serial.printf("PROBE1 = %.1f  ", t);
